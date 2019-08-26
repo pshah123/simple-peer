@@ -699,7 +699,7 @@ Peer.prototype._onIceStateChange = function () {
     // as per new spec: https://bugs.chromium.org/p/chromium/issues/detail?id=982793#c16
     setTimeout(() => {
       if (self._pc.iceConnectionState === 'disconnected') self.destroy(makeError('Ice connection disconnected for too long.', 'ERR_ICE_CONNECTION_FAILURE'))
-    }, 2000)
+    }, 10000)
   }
   if (iceConnectionState === 'failed' || fallbackConnectionState === 'failed') {
     self.destroy(makeError('Ice connection failed.', 'ERR_ICE_CONNECTION_FAILURE'))
@@ -1037,6 +1037,7 @@ function filterTrickle (sdp) {
 function makeError (message, code) {
   var err = new Error(message)
   err.code = code
+  console.error(err) // for some reason not getting logged
   return err
 }
 
