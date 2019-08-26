@@ -164,7 +164,8 @@ Peer.config = {
       urls: 'stun:global.stun.twilio.com:3478?transport=udp'
     }
   ],
-  sdpSemantics: 'unified-plan'
+  sdpSemantics: 'unified-plan',
+  // sdpSemantics: 'plan-b' // https://bugs.chromium.org/p/chromium/issues/detail?id=982793#c16
 }
 Peer.channelConfig = {}
 
@@ -680,11 +681,13 @@ Peer.prototype._onIceStateChange = function () {
   if (self.destroyed) return
   var iceConnectionState = self._pc.iceConnectionState
   var iceGatheringState = self._pc.iceGatheringState
+  var fallbackConnectionState = self._pc.connectionState
 
   self._debug(
-    'iceStateChange (connection: %s) (gathering: %s)',
+    'iceStateChange (connection: %s) (gathering: %s) (fallback connection: %s)',
     iceConnectionState,
-    iceGatheringState
+    iceGatheringState,
+    fallbackConnectionState
   )
   self.emit('iceStateChange', iceConnectionState, iceGatheringState)
 
@@ -692,7 +695,13 @@ Peer.prototype._onIceStateChange = function () {
     self._pcReady = true
     self._maybeReady()
   }
-  if (iceConnectionState === 'failed') {
+  if (iceConnectionState === 'disconnected') {
+    // as per new spec: https://bugs.chromium.org/p/chromium/issues/detail?id=982793#c16
+    setTimeout(() => {
+      if (self._pc.iceConnectionState === 'disconnected') self.destroy(makeError('Ice connection disconnected for too long.', 'ERR_ICE_CONNECTION_FAILURE'))
+    }, 2000)
+  }
+  if (iceConnectionState === 'failed' || fallbackConnectionState === 'failed') {
     self.destroy(makeError('Ice connection failed.', 'ERR_ICE_CONNECTION_FAILURE'))
   }
   if (iceConnectionState === 'closed') {
